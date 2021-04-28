@@ -1,0 +1,41 @@
+{
+  "name": "@visx/demo-dots",
+  "description": "Standalone visx scatterplot demo.",
+  "main": "index.tsx",
+  "private": true,
+  "dependencies": {
+    "@babel/runtime": "^7.8.4",
+    "@types/react": "^16",
+    "@types/react-dom": "^16",
+    "@visx/axis": "1.8.0",
+    "@visx/event": "latest",
+    "@visx/gradient": "latest",
+    "@visx/group": "latest",
+    "@visx/mock-data": "latest",
+    "@visx/pattern": "1.7.0",
+    "@visx/responsive": "latest",
+    "@visx/scale": "latest",
+    "@visx/shape": "latest",
+    "@visx/tooltip": "latest",
+    "@visx/voronoi": "latest",
+    "@visx/xychart": "1.9.1",
+    "react": "^16.8",
+    "react-dom": "^16.8",
+    "react-scripts-ts": "^2.13.0",
+    "react-spring": "9.1.2",
+    "typescript": "^3"
+  },
+  "keywords": [
+    "visualization",
+    "d3",
+    "react",
+    "visx",
+    "visualization"
+  ],
+  "scripts": {
+    "start": "react-scripts-ts start",
+    "build": "react-scripts-ts build",
+    "test": "react-scripts-ts test --env=jsdom",
+    "eject": "react-scripts-ts eject"
+  }
+}
