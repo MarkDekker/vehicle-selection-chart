@@ -1,0 +1,21 @@
+export default {
+  "1": "Normal/Benzin 91",
+  "10": "Erdgas H",
+  "11": "Erdgas L",
+  "12": "Strom",
+  "13": "Wasserstoff",
+  "14": "Pflanzenöl",
+  "15": "Biogas/Bio-Erdgas",
+  "16": "Ethanolkraftstoff 85",
+  "2": "Super 95",
+  "3": "Super Plus 98",
+  "4": "Normal/Benzin E10 91",
+  "5": "Super E10 95",
+  "6": "Super Plus E10 98",
+  "7": "Diesel",
+  "8": "Biodiesel",
+  D: "Diesel",
+  B: "Biogas/Bio-Erdgas",
+  E: "Elektrisch",
+  "9": "Flüssiggas/Autogas (LPG)"
+};

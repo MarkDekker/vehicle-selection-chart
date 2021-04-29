@@ -11,6 +11,7 @@ import { WithTooltipProvidedProps } from "@visx/tooltip/lib/enhancers/withToolti
 import { voronoi } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import format from "./formattingFunctions";
+import { getRelevantFilters } from "./checkData";
 
 import {
   ListingSummary,
@@ -19,23 +20,22 @@ import {
 } from "./mockData/powerSearch";
 import theme from "./theme";
 
-import mappingMake from "./mappings/mappingMake";
-import mappingModel from "./mappings/mappingModel";
-import { peMappings, peIcons } from "./mappings/mappingPriceEvaluation";
-import mappingBodyType from "./mappings/mappingBodyType";
+import { getLabel } from "./mappings/labelMapper";
+import { peIcons } from "./mappings/mappingPriceEvaluation";
 import availableImages from "./mappings/availableImages";
 
-// --- Constants
-const GOOD_OFFER = 1;
-const SELECTED_MAKE = 57;
-const MILEAGE_KEY = "mileage";
-const PRICE_KEY = "price";
-const POWER_KEY = "power";
-const MAKE_KEY = "make";
-const MODEL_KEY = "model";
-const BODY_TYPE_KEY = "bodyTypeID";
-const PRICE_EVALUATION_KEY = "peCategory";
-const REGISTRATION_KEY = "registrationDate";
+import {
+  GOOD_OFFER,
+  SELECTED_MAKE,
+  MILEAGE_KEY,
+  PRICE_KEY,
+  POWER_KEY,
+  MAKE_KEY,
+  MODEL_KEY,
+  BODY_TYPE_KEY,
+  PRICE_EVALUATION_KEY,
+  REGISTRATION_KEY
+} from "./constants";
 
 // --- Chart Types
 
@@ -80,28 +80,6 @@ const comparison = (operation?: string) => {
   }
 };
 
-const getLabel = (id: string | number, idType: string) => {
-  const idStr = id.toString();
-  let mappingTable = {};
-  switch (idType) {
-    case MAKE_KEY:
-      mappingTable = mappingMake;
-      break;
-    case MODEL_KEY:
-      mappingTable = mappingModel;
-      break;
-    case PRICE_EVALUATION_KEY:
-      mappingTable = peMappings;
-      break;
-    case BODY_TYPE_KEY:
-      mappingTable = mappingBodyType;
-      break;
-    default:
-      return "";
-  }
-  return mappingTable.hasOwnProperty(idStr) ? mappingTable[idStr] : "";
-};
-
 const getLogo = (id: string | number) => {
   const idStr = id.toString();
   if (availableImages.hasOwnProperty(idStr)) {
@@ -134,6 +112,11 @@ const xRange = {
   }
 };
 
+let relevantFilters = {};
+for (const filter of getRelevantFilters(listings).slice(0, 5)) {
+  relevantFilters[filter.key] = filter;
+}
+
 export default withTooltip<ChartProps, ListingSummary>(
   ({
     width,
@@ -147,8 +130,12 @@ export default withTooltip<ChartProps, ListingSummary>(
   }: ChartProps & WithTooltipProvidedProps<ListingSummary>) => {
     if (width < 10) return null;
 
-    const [highlightState, sethighlightState] = useState("no-highlight");
+    const [highlightState, sethighlightState] = useState({
+      key: "no-highlight",
+      value: undefined
+    });
     const [showMileage, setShowMileage] = useState(true);
+
     let xCategory = showMileage ? MILEAGE_KEY : REGISTRATION_KEY;
     let yCategory = PRICE_KEY;
     let glyphCategory = POWER_KEY;
@@ -218,14 +205,14 @@ export default withTooltip<ChartProps, ListingSummary>(
 
     const highLight = useCallback(
       (d: ListingSummary) => {
-        switch (highlightState) {
-          case PRICE_EVALUATION_KEY:
-            return comparison()(d.peCategory, GOOD_OFFER);
-          case "Make":
-            return comparison()(d.makeID, SELECTED_MAKE);
-          default:
-            return false;
+        if (relevantFilters.hasOwnProperty(highlightState.key)) {
+          const filterDefinition = relevantFilters[highlightState.key];
+          return comparison(filterDefinition.comparator)(
+            d[highlightState.key],
+            highlightState.value
+          );
         }
+        return false;
       },
       [highlightState]
     );
@@ -235,7 +222,8 @@ export default withTooltip<ChartProps, ListingSummary>(
       if (highLight(d)) {
         return theme.colors.chart.highlight;
       }
-      if (highlightState !== "no-highlight") return theme.colors.chart.faded;
+      if (highlightState["key"] !== "no-highlight")
+        return theme.colors.chart.faded;
       return theme.colors.chart.base;
     };
 
@@ -472,11 +460,49 @@ export default withTooltip<ChartProps, ListingSummary>(
                   alignItems: "center"
                 }}
               >
-                <img
-                  src={getLogo(tooltipData.makeID)}
-                  alt={`${getLabel(tooltipData.makeID, MAKE_KEY)} Logo`}
-                  style={{ height: 60, marginRight: 8 }}
-                />
+                <div
+                  style={{
+                    marginBottom: 10,
+                    marginRight: 10,
+                    flexDirection: "column",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center"
+                    // alignItems: "center"
+                  }}
+                >
+                  <img
+                    src={getLogo(tooltipData.makeID)}
+                    alt={`${getLabel(tooltipData.makeID, MAKE_KEY)} Logo`}
+                    style={{ height: 60, marginRight: 8 }}
+                  />
+                  {tooltipData.peCategory && tooltipData.peCategory !== 99 && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        flexDirection: "column",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        justifyContent: "center"
+                      }}
+                    >
+                      <div
+                        style={{
+                          marginBottom: 8,
+                          fontSize: 12
+                        }}
+                      >
+                        {getLabel(tooltipData.peCategory, PRICE_EVALUATION_KEY)}
+                      </div>
+                      <img
+                        src={peIcons[tooltipData.peCategory?.toString()]}
+                        alt=""
+                        style={{ width: 90 }}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="tooltip-vehicle-data-text">
                   <div
                     style={{
@@ -524,83 +550,92 @@ export default withTooltip<ChartProps, ListingSummary>(
                   </div>
                 </div>
               </div>
-              {tooltipData.peCategory !== 99 && (
-                <div
-                  style={{
-                    marginTop: 20,
-                    marginBottom: 10,
-                    marginLeft: 0,
-                    flexDirection: "column",
-                    display: "flex",
-                    flexWrap: "wrap"
-                  }}
-                >
-                  <div
-                    style={{
-                      marginBottom: 8
-                    }}
-                  >
-                    {getLabel(tooltipData.peCategory, PRICE_EVALUATION_KEY)}
-                  </div>
-                  <img
-                    src={peIcons[tooltipData.peCategory?.toString()]}
-                    alt=""
-                    style={{ width: 100 }}
-                  />
-                </div>
-              )}
             </Tooltip>
           )}
+          <label style={{ fontSize: 12, marginRight: 30 }}>
+            <input
+              type="checkbox"
+              checked={showMileage}
+              onChange={() => setShowMileage(!showMileage)}
+            />
+            &nbsp; Show Mileage
+          </label>
+          <div>Highlight Data</div>
           {showControls && (
             <div>
-              <div>
-                <label style={{ fontSize: 12, marginRight: 30 }}>
-                  <input
-                    type="checkbox"
-                    checked={showMileage}
-                    onChange={() => setShowMileage(!showMileage)}
-                  />
-                  &nbsp;Show mileage
-                </label>
-              </div>
-              <div>
-                <div>Highlight Data</div>
-                <label style={{ fontSize: 12, marginRight: 30 }}>
-                  <input
-                    type="checkbox"
-                    checked={highlightState === "no-highlight"}
-                    onChange={(e) => {
-                      if (e.currentTarget.checked)
-                        sethighlightState("no-highlight");
-                      return;
-                    }}
-                  />
-                  &nbsp;No Highlight
-                </label>
-                <label style={{ fontSize: 12, marginRight: 30 }}>
-                  <input
-                    type="checkbox"
-                    checked={highlightState === "Make"}
-                    onChange={(e) => {
-                      if (e.currentTarget.checked) sethighlightState("Make");
-                      return;
-                    }}
-                  />
-                  &nbsp;{getLabel(SELECTED_MAKE, MAKE_KEY)}
-                </label>
-                <label style={{ fontSize: 12, marginRight: 30 }}>
-                  <input
-                    type="checkbox"
-                    checked={highlightState === PRICE_EVALUATION_KEY}
-                    onChange={(e) => {
-                      if (e.currentTarget.checked)
-                        sethighlightState(PRICE_EVALUATION_KEY);
-                      return;
-                    }}
-                  />
-                  &nbsp;{getLabel(GOOD_OFFER, PRICE_EVALUATION_KEY)}
-                </label>
-              </div>
+              {getRelevantFilters(listings).map((filterDef, i) => (
+                <div key={`filter--${i}`}>
+                  {filterDef.toggle && (
+                    <label style={{ fontSize: 12, marginRight: 30 }}>
+                      <input
+                        type="checkbox"
+                        checked={highlightState["key"] === filterDef.key}
+                        onChange={(e) => {
+                          console.log(highlightState["key"]);
+                          if (highlightState["key"] !== filterDef.key) {
+                            sethighlightState({
+                              key: filterDef.key,
+                              value: filterDef.values[0]
+                            });
+                          } else {
+                            sethighlightState({
+                              key: "no-highlight",
+                              value: undefined
+                            });
+                          }
+                        }}
+                      />
+                      &nbsp;{filterDef.label ? filterDef.label : filterDef.key}
+                    </label>
+                  )}
+
+                  {filterDef.dropdown && (
+                    <label style={{ fontSize: 12, marginRight: 30 }}>
+                      <select
+                        value={
+                          highlightState["key"] === filterDef.key
+                            ? highlightState["value"]
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const selectedVal = e.target.value;
+                          console.log(selectedVal);
+                          sethighlightState((x) => {
+                            console.log(highlightState["key"]);
+                            // const selectedVal = e.target ? e.target.value : "";
+                            console.log(selectedVal);
+                            return {
+                              key: selectedVal ? filterDef.key : "no-highlight",
+                              value: selectedVal
+                            };
+                          });
+                        }}
+                      >
+                        <option
+                          key={`filter-${filterDef.key}--default`}
+                          value=""
+                        >
+                          Alle
+                        </option>
+                        {filterDef.values.map((value: string | number, i) => (
+                          <option
+                            key={`filter-${filterDef.key}--${i}`}
+                            value={value}
+                          >
+                            {getLabel(value, filterDef.key) || value}
+                          </option>
+                        ))}
+                      </select>
+                      &nbsp;
+                      {filterDef.label
+                        ? filterDef.label
+                        : listingDescriptors[filterDef.key].label}
+                    </label>
+                  )}
+                </div>
+              ))}
+
+              <div></div>
             </div>
           )}
         </div>

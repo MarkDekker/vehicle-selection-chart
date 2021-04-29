@@ -1,0 +1,13 @@
+export const GOOD_OFFER = 1;
+export const SELECTED_MAKE = 57;
+export const MILEAGE_KEY = "mileage";
+export const PRICE_KEY = "price";
+export const POWER_KEY = "power";
+export const MAKE_KEY = "make";
+export const MODEL_KEY = "model";
+export const BODY_TYPE_KEY = "bodyTypeID";
+export const PRICE_EVALUATION_KEY = "peCategory";
+export const REGISTRATION_KEY = "registrationDate";
+export const FUEL_TYPE_KEY = "fuelID";
+export const LISTING_AGE_KEY = "changeDate";
+export const CUSTOMER_TYPE_KEY = "customerTypeID";

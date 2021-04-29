@@ -7,7 +7,7 @@ export default {
       background: "rgba(41, 41, 36, 0.7)"
     },
     chart: {
-      highlight: "#ffffff",
+      highlight: "rgba(250, 250, 250, 0.7)",
       base: "rgba(200, 200, 200, 0.4)",
       interactive: "#f5f200",
       faded: "rgba(200, 200, 200, 0.2)"
