@@ -6,7 +6,8 @@ export default {
     chart: {
       highlight: "#ffffff",
       base: "#999999",
-      interactive: "#f5f200"
+      interactive: "#f5f200",
+      faded: "rgba(153, 153, 153, 0.5)"
     },
     PriceLabel: {
       "Gutes Angebot": "#3da600"

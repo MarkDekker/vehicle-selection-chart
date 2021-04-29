@@ -15,29 +15,76 @@ import format from "./formattingFunctions";
 import { ListingSummary, listings } from "./mock_data";
 import theme from "./theme";
 
+// --- Chart Types
+
 interface keyValuePair {
   key: string;
   value: any;
+  operator?: string;
 }
 
-const glyphSizes = { min: 3, max: 15 };
-
-const date = (d: string) => new Date(Date.parse(d)).valueOf();
-
-// --------------------
-
-let tooltipTimeout: number;
-
-const defaultMargin = { top: 30, right: 30, bottom: 50, left: 110 };
-
-export type DotsProps = {
+export type ChartProps = {
   width: number;
   height: number;
   showControls?: true;
   margin?: { top: number; right: number; bottom: number; left: number };
 };
 
-export default withTooltip<DotsProps, ListingSummary>(
+let tooltipTimeout: number;
+
+// --- Utility Functions ------------
+
+const date = (d: string | number) =>
+  new Date(Date.parse(d.toString())).valueOf();
+
+const comparison = (operation?: string) => {
+  switch (operation) {
+    case "larger":
+      return (value: string | number, targetValue: string | number) =>
+        value > targetValue;
+    case "smaller":
+      return (value: string | number, targetValue: string | number) =>
+        value < targetValue;
+    default:
+      return (value: string | number, targetValue: string | number) =>
+        value === targetValue;
+  }
+};
+
+// const setHighlights = (target?: string) => {
+//   const highlights = {
+//     Make: false,
+//     PriceLabel: false
+//   };
+//   if (!target) return highlights;
+//   highlights[target] = true;
+//   return highlights;
+// };
+
+// --- Chart Design -----------------
+
+const glyphSizes = { min: 3, max: 15 };
+const defaultMargin = { top: 30, right: 30, bottom: 50, left: 110 };
+
+// --- Constant Chart Values --------
+
+const yRange = {
+  min: Math.min(...listings.map((x) => x.Price)),
+  max: Math.max(...listings.map((x) => x.Price))
+};
+
+const xRange = {
+  Mileage: {
+    min: Math.min(...listings.map((x) => x.Mileage)),
+    max: Math.max(...listings.map((x) => x.Mileage))
+  },
+  Registration: {
+    min: Math.min(...listings.map((x) => date(x.Registration))),
+    max: Math.max(...listings.map((x) => date(x.Registration)))
+  }
+};
+
+export default withTooltip<ChartProps, ListingSummary>(
   ({
     width,
     height,
@@ -47,13 +94,13 @@ export default withTooltip<DotsProps, ListingSummary>(
     showTooltip,
     tooltipOpen,
     tooltipData
-  }: DotsProps & WithTooltipProvidedProps<ListingSummary>) => {
+  }: ChartProps & WithTooltipProvidedProps<ListingSummary>) => {
     if (width < 10) return null;
 
+    const [highlightState, sethighlightState] = useState("no-highlight");
     const [showMileage, setShowMileage] = useState(true);
     let xCategory = showMileage ? "Mileage" : "Registration";
     let yCategory = "Price";
-    let highlight = { TopPrice: true };
 
     const x = useCallback(
       (d) => (xCategory === "Mileage" ? d[xCategory] : date(d[xCategory])),
@@ -67,14 +114,26 @@ export default withTooltip<DotsProps, ListingSummary>(
         glyphSizes.max
       );
 
-    const setGlyphColor = (
-      d: ListingSummary,
-      highlightValues?: keyValuePair
-    ) => {
+    const highLight = useCallback(
+      (d: ListingSummary) => {
+        switch (highlightState) {
+          case "PriceLabel":
+            return comparison()(d.PriceLabel, "Gutes Angebot");
+          case "Make":
+            return comparison()(d.Make, "Porsche Boxter");
+          default:
+            return false;
+        }
+      },
+      [highlightState]
+    );
+
+    const setGlyphColor = (d: ListingSummary) => {
       if (tooltipData === d) return theme.colors.chart.interactive;
-      if (highlightValues && d[highlightValues.key] === highlightValues.value) {
+      if (highLight(d)) {
         return theme.colors.chart.highlight;
       }
+      if (highlightState !== "no-highlight") return theme.colors.chart.faded;
       return theme.colors.chart.base;
     };
 
@@ -84,30 +143,6 @@ export default withTooltip<DotsProps, ListingSummary>(
     // Bounds and Scale
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
-
-    const yRange = {
-      min: Math.min(...listings.map((x) => x[yCategory])),
-      max: Math.max(...listings.map((x) => x[yCategory]))
-    };
-
-    const xRange = {
-      Mileage: {
-        min: Math.min(...listings.map((x: ListingSummary) => x.Mileage)),
-        max: Math.max(...listings.map((x: ListingSummary) => x.Mileage))
-      },
-      Registration: {
-        min: Math.min(
-          ...listings.map((x: ListingSummary) =>
-            date(x.Registration.toString())
-          )
-        ),
-        max: Math.max(
-          ...listings.map((x: ListingSummary) =>
-            date(x.Registration.toString())
-          )
-        )
-      }
-    };
 
     const xScale = useMemo(
       () =>
@@ -399,18 +434,37 @@ export default withTooltip<DotsProps, ListingSummary>(
               <label style={{ fontSize: 12, marginRight: 30 }}>
                 <input
                   type="checkbox"
-                  checked={highlight.TopPrice}
-                  onChange={() => setHighlightData(highlight)}
+                  checked={highlightState === "no-highlight"}
+                  onChange={(e) => {
+                    if (e.currentTarget.checked)
+                      sethighlightState("no-highlight");
+                    return;
+                  }}
                 />
-                &nbsp;Top Price
+                &nbsp;No Highlight
               </label>
               <label style={{ fontSize: 12, marginRight: 30 }}>
                 <input
                   type="checkbox"
-                  checked={highlight.TopPrice}
-                  onChange={() => setHighlightData(highlight)}
+                  checked={highlightState === "Make"}
+                  onChange={(e) => {
+                    if (e.currentTarget.checked) sethighlightState("Make");
+                    return;
+                  }}
                 />
-                &nbsp;Top Price
+                &nbsp;Porsche Boxter
+              </label>
+              <label style={{ fontSize: 12, marginRight: 30 }}>
+                <input
+                  type="checkbox"
+                  checked={highlightState === "PriceLabel"}
+                  onChange={(e) => {
+                    if (e.currentTarget.checked)
+                      sethighlightState("PriceLabel");
+                    return;
+                  }}
+                />
+                &nbsp;Great Deal
               </label>
             </div>
           </div>
