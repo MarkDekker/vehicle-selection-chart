@@ -17,7 +17,8 @@ import theme from "./theme";
 
 import mappingMake from "./mappingMake";
 import mappingModel from "./mappingModel";
-import mappingPriceEvaluation from "./mappingPriceEvaluation";
+import { peMappings, peIcons } from "./mappingPriceEvaluation";
+import mappingBodyType from "./mappingBodyType";
 import availableImages from "./availableImages";
 
 // --- Constants
@@ -28,6 +29,7 @@ const PRICE_KEY = "price";
 const POWER_KEY = "power";
 const MAKE_KEY = "make";
 const MODEL_KEY = "model";
+const BODY_TYPE_KEY = "bodyTypeID";
 const PRICE_EVALUATION_KEY = "peCategory";
 const REGISTRATION_KEY = "registrationDate";
 
@@ -85,7 +87,10 @@ const getLabel = (id: string | number, idType: string) => {
       mappingTable = mappingModel;
       break;
     case PRICE_EVALUATION_KEY:
-      mappingTable = mappingPriceEvaluation;
+      mappingTable = peMappings;
+      break;
+    case BODY_TYPE_KEY:
+      mappingTable = mappingBodyType;
       break;
     default:
       return "";
@@ -449,9 +454,7 @@ export default withTooltip<ChartProps, ListingSummary>(
                 color: theme.text.color.base,
                 padding: "10px 10px",
                 display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center"
+                flexDirection: "column"
               }}
             >
               <div
@@ -488,9 +491,19 @@ export default withTooltip<ChartProps, ListingSummary>(
                     >
                       {getLabel(tooltipData.makeID, MAKE_KEY)}
                     </div>
-                    <div style={{ minWidth: 80 }}>
+                    <div style={{ minWidth: 80, marginBottom: 5 }}>
                       {getLabel(tooltipData.modelID, MODEL_KEY)}
                     </div>
+                    {tooltipData.bodyTypeID && (
+                      <div
+                        style={{
+                          minWidth: 120,
+                          color: theme.text.color.subdued
+                        }}
+                      >
+                        {getLabel(tooltipData.bodyTypeID, BODY_TYPE_KEY)}
+                      </div>
+                    )}
                   </div>
                   <div className="tooltip-vehicle-data-row">
                     <div className="tooltip-data-entry">
@@ -507,6 +520,31 @@ export default withTooltip<ChartProps, ListingSummary>(
                   </div>
                 </div>
               </div>
+              {tooltipData.peCategory !== 99 && (
+                <div
+                  style={{
+                    marginTop: 20,
+                    marginBottom: 10,
+                    marginLeft: 0,
+                    flexDirection: "column",
+                    display: "flex",
+                    flexWrap: "wrap"
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom: 8
+                    }}
+                  >
+                    {getLabel(tooltipData.peCategory, PRICE_EVALUATION_KEY)}
+                  </div>
+                  <img
+                    src={peIcons[tooltipData.peCategory?.toString()]}
+                    alt=""
+                    style={{ width: 100 }}
+                  />
+                </div>
+              )}
             </Tooltip>
           )}
           {showControls && (

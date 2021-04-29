@@ -25,7 +25,8 @@ export default {
   text: {
     color: {
       base: "rgb(255,255,255)",
-      interactive: ""
+      interactive: "",
+      subdued: "rgb(150,150,150)"
     }
   }
 };
