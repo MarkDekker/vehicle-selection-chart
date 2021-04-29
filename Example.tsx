@@ -12,19 +12,23 @@ import { voronoi } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import format from "./formattingFunctions";
 
-import { ListingSummary, listings } from "./powerSearch";
+import { ListingSummary, listings, listingDescriptors } from "./powerSearch";
 import theme from "./theme";
 
 import mappingMake from "./mappingMake";
 import mappingModel from "./mappingModel";
+import mappingPriceEvaluation from "./mappingPriceEvaluation";
 import availableImages from "./availableImages";
 
 // --- Constants
-const GOOD_OFFER = "Gutes Angebot";
-const SELECTED_MAKE = "Porsche Boxter";
-const PRICE_EVAL = "peCategory";
+const GOOD_OFFER = 1;
+const SELECTED_MAKE = 57;
 const MILEAGE_KEY = "mileage";
 const PRICE_KEY = "price";
+const POWER_KEY = "power";
+const MAKE_KEY = "make";
+const MODEL_KEY = "model";
+const PRICE_EVALUATION_KEY = "peCategory";
 const REGISTRATION_KEY = "registrationDate";
 
 // --- Chart Types
@@ -40,7 +44,7 @@ let tooltipTimeout: number;
 
 // --- Utility Functions ------------
 
-const processAS24Date = (d: string | number) => {
+const processAS24Date = (d: string | number | undefined) => {
   if (d) {
     let ds = d.toString();
     ds = `${ds.slice(0, 4)}-${ds.slice(4, 6)}-${ds.slice(6, 8)}`;
@@ -53,14 +57,20 @@ const processAS24Date = (d: string | number) => {
 const comparison = (operation?: string) => {
   switch (operation) {
     case "larger":
-      return (value: string | number, targetValue: string | number) =>
-        value > targetValue;
+      return (
+        value: string | number | undefined,
+        targetValue: string | number
+      ) => (value ? value > targetValue : false);
     case "smaller":
-      return (value: string | number, targetValue: string | number) =>
-        value < targetValue;
+      return (
+        value: string | number | undefined,
+        targetValue: string | number
+      ) => (value ? value < targetValue : false);
     default:
-      return (value: string | number, targetValue: string | number) =>
-        value === targetValue;
+      return (
+        value: string | number | undefined,
+        targetValue: string | number
+      ) => value === targetValue;
   }
 };
 
@@ -68,11 +78,14 @@ const getLabel = (id: string | number, idType: string) => {
   const idStr = id.toString();
   let mappingTable = {};
   switch (idType) {
-    case "make":
+    case MAKE_KEY:
       mappingTable = mappingMake;
       break;
-    case "model":
+    case MODEL_KEY:
       mappingTable = mappingModel;
+      break;
+    case PRICE_EVALUATION_KEY:
+      mappingTable = mappingPriceEvaluation;
       break;
     default:
       return "";
@@ -129,6 +142,7 @@ export default withTooltip<ChartProps, ListingSummary>(
     const [showMileage, setShowMileage] = useState(true);
     let xCategory = showMileage ? MILEAGE_KEY : REGISTRATION_KEY;
     let yCategory = PRICE_KEY;
+    let glyphCategory = POWER_KEY;
 
     const x = useCallback(
       (d) =>
@@ -138,38 +152,7 @@ export default withTooltip<ChartProps, ListingSummary>(
       [xCategory]
     );
     const y = useCallback((d) => d[yCategory], [yCategory]);
-
-    const glyphSize = (d: ListingSummary) =>
-      Math.min(
-        Math.max(
-          glyphSizes.min,
-          d.equipmentCount ? d.equipmentCount * 0.5 : glyphSizes.min
-        ),
-        glyphSizes.max
-      );
-
-    const highLight = useCallback(
-      (d: ListingSummary) => {
-        switch (highlightState) {
-          case PRICE_EVAL:
-            return comparison()(d.peCategory, GOOD_OFFER);
-          case "Make":
-            return comparison()(d.makeID, SELECTED_MAKE);
-          default:
-            return false;
-        }
-      },
-      [highlightState]
-    );
-
-    const setGlyphColor = (d: ListingSummary) => {
-      if (tooltipData === d) return theme.colors.chart.interactive;
-      if (highLight(d)) {
-        return theme.colors.chart.highlight;
-      }
-      if (highlightState !== "no-highlight") return theme.colors.chart.faded;
-      return theme.colors.chart.base;
-    };
+    const glyph = useCallback((d) => d[glyphCategory], [glyphCategory]);
 
     const points = listings;
     const svgRef = useRef<SVGSVGElement>(null);
@@ -202,6 +185,50 @@ export default withTooltip<ChartProps, ListingSummary>(
         }),
       [yMax]
     );
+
+    const glyphScale = useMemo(
+      () =>
+        scaleLinear<number>({
+          domain: [
+            Math.min(
+              ...listings.map((d) =>
+                d[glyphCategory] ? d[glyphCategory] : Math.pow(10, 10)
+              )
+            ),
+            Math.max(
+              ...listings.map((d) =>
+                d[glyphCategory] ? d[glyphCategory] : -Math.pow(10, 10)
+              )
+            )
+          ],
+          range: [glyphSizes.min, glyphSizes.max],
+          clamp: true
+        }),
+      [glyphCategory]
+    );
+
+    const highLight = useCallback(
+      (d: ListingSummary) => {
+        switch (highlightState) {
+          case PRICE_EVALUATION_KEY:
+            return comparison()(d.peCategory, GOOD_OFFER);
+          case "Make":
+            return comparison()(d.makeID, SELECTED_MAKE);
+          default:
+            return false;
+        }
+      },
+      [highlightState]
+    );
+
+    const setGlyphColor = (d: ListingSummary) => {
+      if (tooltipData === d) return theme.colors.chart.interactive;
+      if (highLight(d)) {
+        return theme.colors.chart.highlight;
+      }
+      if (highlightState !== "no-highlight") return theme.colors.chart.faded;
+      return theme.colors.chart.base;
+    };
 
     const voronoiLayout = useMemo(
       () =>
@@ -333,7 +360,7 @@ export default withTooltip<ChartProps, ListingSummary>(
                   verticalAnchor="start"
                   textAnchor="middle"
                 >
-                  Equipment
+                  {format.titleCase(glyphCategory)}
                 </Text>
 
                 <Group left={0} top={-glyphSizes.min}>
@@ -355,7 +382,9 @@ export default withTooltip<ChartProps, ListingSummary>(
                     verticalAnchor={"middle"}
                     textAnchor="middle"
                   >
-                    {"< 10 Items"}
+                    {listingDescriptors[glyphCategory].format(
+                      glyphScale.domain()[0]
+                    )}
                   </Text>
                   <Line
                     from={{ x: 40, y: 0 }}
@@ -384,7 +413,9 @@ export default withTooltip<ChartProps, ListingSummary>(
                     verticalAnchor={"middle"}
                     textAnchor="middle"
                   >
-                    {"> 40 Items"}
+                    {listingDescriptors[glyphCategory].format(
+                      glyphScale.domain()[1]
+                    )}
                   </Text>
                   <Line
                     from={{ x: 40, y: 0 }}
@@ -400,9 +431,9 @@ export default withTooltip<ChartProps, ListingSummary>(
                   className="dot"
                   cx={xScale(x(point))}
                   cy={yScale(y(point))}
-                  r={glyphSize(point)}
+                  r={glyphScale(glyph(point))}
                   fill={setGlyphColor(point)}
-                  opacity={tooltipData === point ? 1 : 0.4}
+                  // opacity={tooltipData === point ? 1}
                 />
               ))}
             </Group>
@@ -414,7 +445,7 @@ export default withTooltip<ChartProps, ListingSummary>(
               style={{
                 ...defaultStyles,
                 width: 300,
-                backgroundColor: "rgba(20, 20, 20, 0.6)",
+                backgroundColor: theme.colors.tooltip.background,
                 color: theme.text.color.base,
                 padding: "10px 10px",
                 display: "flex",
@@ -436,7 +467,7 @@ export default withTooltip<ChartProps, ListingSummary>(
               >
                 <img
                   src={getLogo(tooltipData.makeID)}
-                  alt={`${getLabel(tooltipData.makeID, "make")} Logo`}
+                  alt={`${getLabel(tooltipData.makeID, MAKE_KEY)} Logo`}
                   style={{ height: 60, marginRight: 8 }}
                 />
                 <div className="tooltip-vehicle-data-text">
@@ -455,10 +486,10 @@ export default withTooltip<ChartProps, ListingSummary>(
                         marginBottom: 5
                       }}
                     >
-                      {getLabel(tooltipData.makeID, "make")}
+                      {getLabel(tooltipData.makeID, MAKE_KEY)}
                     </div>
                     <div style={{ minWidth: 80 }}>
-                      {getLabel(tooltipData.modelID, "model")}
+                      {getLabel(tooltipData.modelID, MODEL_KEY)}
                     </div>
                   </div>
                   <div className="tooltip-vehicle-data-row">
@@ -513,19 +544,19 @@ export default withTooltip<ChartProps, ListingSummary>(
                       return;
                     }}
                   />
-                  &nbsp;{SELECTED_MAKE}
+                  &nbsp;{getLabel(SELECTED_MAKE, MAKE_KEY)}
                 </label>
                 <label style={{ fontSize: 12, marginRight: 30 }}>
                   <input
                     type="checkbox"
-                    checked={highlightState === PRICE_EVAL}
+                    checked={highlightState === PRICE_EVALUATION_KEY}
                     onChange={(e) => {
                       if (e.currentTarget.checked)
-                        sethighlightState(PRICE_EVAL);
+                        sethighlightState(PRICE_EVALUATION_KEY);
                       return;
                     }}
                   />
-                  &nbsp;{GOOD_OFFER}
+                  &nbsp;{getLabel(GOOD_OFFER, PRICE_EVALUATION_KEY)}
                 </label>
               </div>
             </div>
