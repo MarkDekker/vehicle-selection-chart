@@ -1,4 +1,4 @@
-import format from "./formattingFunctions";
+import format from "../formattingFunctions";
 
 export interface ListingSummary {
   classifiedGUID: string;

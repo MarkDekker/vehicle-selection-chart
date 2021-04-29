@@ -2,7 +2,7 @@ import React from "react";
 import { render } from "react-dom";
 import ParentSize from "@visx/responsive/lib/components/ParentSize";
 
-import Example from "./Example";
+import Example from "./src/Example";
 import "./sandbox-styles.css";
 
 render(

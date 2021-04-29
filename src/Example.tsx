@@ -12,14 +12,18 @@ import { voronoi } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import format from "./formattingFunctions";
 
-import { ListingSummary, listings, listingDescriptors } from "./powerSearch";
+import {
+  ListingSummary,
+  listings,
+  listingDescriptors
+} from "./mockData/powerSearch";
 import theme from "./theme";
 
-import mappingMake from "./mappingMake";
-import mappingModel from "./mappingModel";
-import { peMappings, peIcons } from "./mappingPriceEvaluation";
-import mappingBodyType from "./mappingBodyType";
-import availableImages from "./availableImages";
+import mappingMake from "./mappings/mappingMake";
+import mappingModel from "./mappings/mappingModel";
+import { peMappings, peIcons } from "./mappings/mappingPriceEvaluation";
+import mappingBodyType from "./mappings/mappingBodyType";
+import availableImages from "./mappings/availableImages";
 
 // --- Constants
 const GOOD_OFFER = 1;
