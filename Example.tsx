@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useCallback, useRef } from "react";
 import { Group } from "@visx/group";
-import { Circle } from "@visx/shape";
+import { Circle, Line } from "@visx/shape";
 import { LinearGradient } from "@visx/gradient";
+import { Text } from "@visx/text";
 import { scaleLinear, scaleTime } from "@visx/scale";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
@@ -11,26 +12,17 @@ import { voronoi } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import format from "./formattingFunctions";
 
-import mockData from "./mock_data";
+import { ListingSummary, listings } from "./mock_data";
 import theme from "./theme";
 
-const date = (d) => new Date(Date.parse(d)).valueOf();
+interface keyValuePair {
+  key: string;
+  value: any;
+}
 
-const yRange = {
-  min: Math.min(...mockData.map((x) => x.Price)),
-  max: Math.max(...mockData.map((x) => x.Price))
-};
+const glyphSizes = { min: 3, max: 15 };
 
-const xRange = {
-  Mileage: {
-    min: Math.min(...mockData.map((x) => x.Mileage)),
-    max: Math.max(...mockData.map((x) => x.Mileage))
-  },
-  Registration: {
-    min: Math.min(...mockData.map((x) => date(x.Registration))),
-    max: Math.max(...mockData.map((x) => date(x.Registration)))
-  }
-};
+const date = (d: string) => new Date(Date.parse(d)).valueOf();
 
 // --------------------
 
@@ -45,7 +37,7 @@ export type DotsProps = {
   margin?: { top: number; right: number; bottom: number; left: number };
 };
 
-export default withTooltip<DotsProps, PointsRange>(
+export default withTooltip<DotsProps, ListingSummary>(
   ({
     width,
     height,
@@ -54,16 +46,14 @@ export default withTooltip<DotsProps, PointsRange>(
     hideTooltip,
     showTooltip,
     tooltipOpen,
-    tooltipData,
-    tooltipLeft,
-    tooltipTop
-  }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
+    tooltipData
+  }: DotsProps & WithTooltipProvidedProps<ListingSummary>) => {
     if (width < 10) return null;
 
     const [showMileage, setShowMileage] = useState(true);
     let xCategory = showMileage ? "Mileage" : "Registration";
     let yCategory = "Price";
-    let colorCategory = "Price Label";
+    let highlight = { TopPrice: true };
 
     const x = useCallback(
       (d) => (xCategory === "Mileage" ? d[xCategory] : date(d[xCategory])),
@@ -71,26 +61,54 @@ export default withTooltip<DotsProps, PointsRange>(
     );
     const y = useCallback((d) => d[yCategory], [yCategory]);
 
-    const glyphSize = (d) =>
-      Math.min(Math.max(1, d["Equipment Count"] * 0.3), 20);
+    const glyphSize = (d: ListingSummary) =>
+      Math.min(
+        Math.max(glyphSizes.min, d.EquipmentCount * 0.5),
+        glyphSizes.max
+      );
 
-    const setGlyphColor = (d) => {
-      if (tooltipData === d) return theme.colors.scheme[0];
-      if (
-        theme.colors.hasOwnProperty(colorCategory) &&
-        theme.colors[colorCategory].hasOwnProperty(d[colorCategory])
-      ) {
-        return theme.colors[colorCategory][d[colorCategory]];
+    const setGlyphColor = (
+      d: ListingSummary,
+      highlightValues?: keyValuePair
+    ) => {
+      if (tooltipData === d) return theme.colors.chart.interactive;
+      if (highlightValues && d[highlightValues.key] === highlightValues.value) {
+        return theme.colors.chart.highlight;
       }
-      return theme.colors.scheme[1];
+      return theme.colors.chart.base;
     };
 
-    // bounds
+    const points = listings;
+    const svgRef = useRef<SVGSVGElement>(null);
+
+    // Bounds and Scale
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
 
-    const points = mockData;
-    const svgRef = useRef<SVGSVGElement>(null);
+    const yRange = {
+      min: Math.min(...listings.map((x) => x[yCategory])),
+      max: Math.max(...listings.map((x) => x[yCategory]))
+    };
+
+    const xRange = {
+      Mileage: {
+        min: Math.min(...listings.map((x: ListingSummary) => x.Mileage)),
+        max: Math.max(...listings.map((x: ListingSummary) => x.Mileage))
+      },
+      Registration: {
+        min: Math.min(
+          ...listings.map((x: ListingSummary) =>
+            date(x.Registration.toString())
+          )
+        ),
+        max: Math.max(
+          ...listings.map((x: ListingSummary) =>
+            date(x.Registration.toString())
+          )
+        )
+      }
+    };
+
     const xScale = useMemo(
       () =>
         xCategory === "Mileage"
@@ -115,9 +133,10 @@ export default withTooltip<DotsProps, PointsRange>(
         }),
       [yMax]
     );
+
     const voronoiLayout = useMemo(
       () =>
-        voronoi<PointsRange>({
+        voronoi<ListingSummary>({
           x: (d) => xScale(x(d)) + margin.left ?? 0,
           y: (d) => yScale(y(d)) + margin.top ?? 0,
           width,
@@ -135,13 +154,19 @@ export default withTooltip<DotsProps, PointsRange>(
         // find the nearest polygon to the current mouse position
         const point = localPoint(svgRef.current, event);
         if (!point) return;
-        const neighborRadius = 100;
+        const neighborRadius = 10;
         const closest = voronoiLayout.find(point.x, point.y, neighborRadius);
         if (closest) {
           showTooltip({
             tooltipLeft: xScale(x(closest.data)),
             tooltipTop: yScale(y(closest.data)),
             tooltipData: closest.data
+          });
+        } else {
+          showTooltip({
+            tooltipLeft: 0,
+            tooltipTop: 0,
+            tooltipData: undefined
           });
         }
       },
@@ -154,11 +179,14 @@ export default withTooltip<DotsProps, PointsRange>(
       }, 300);
     }, [hideTooltip]);
 
-    // console.log(getTicks(xScale, 5))
-
     return (
       <div>
-        <svg width={width} height={height} ref={svgRef}>
+        <svg
+          width={width}
+          height={height}
+          ref={svgRef}
+          style={{ cursor: tooltipOpen && tooltipData ? "pointer" : "default" }}
+        >
           <LinearGradient
             from={theme.background[0]}
             to={theme.background[1]}
@@ -168,7 +196,7 @@ export default withTooltip<DotsProps, PointsRange>(
           <rect
             width={width}
             height={height}
-            rx={14}
+            rx={4}
             fill="url(#dots-pink)"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
@@ -183,24 +211,22 @@ export default withTooltip<DotsProps, PointsRange>(
               tickLabelProps={() => ({
                 fill: theme.text.color.base,
                 fontSize: 14,
-                fontFamily: "sans-serif",
                 textAnchor: "end",
                 verticalAnchor: "middle"
               })}
-              tickStroke={"rgba(0,0,0,0)"}
+              tickLength={0}
               numTicks={5}
             />
             <AxisBottom
               top={yMax}
               scale={xScale}
               hideAxisLine={true}
-              tickStroke={"rgba(0,0,0,0)"}
+              tickLength={0}
               stroke={theme.text.color.base}
               numTicks={5}
               tickLabelProps={() => ({
                 fill: theme.text.color.base,
                 fontSize: 14,
-                fontFamily: "sans-serif",
                 textAnchor: "middle",
                 verticalAnchor: "middle"
               })}
@@ -222,6 +248,77 @@ export default withTooltip<DotsProps, PointsRange>(
               stroke={theme.gridLines.color}
               opacity={theme.gridLines.opacity}
             />
+            <Group pointerEvents="none" left={40} top={50}>
+              <Text
+                x={0}
+                y={-50}
+                fill={theme.colors.accent}
+                width={80}
+                fontSize={12}
+                verticalAnchor="start"
+                textAnchor="middle"
+              >
+                Equipment
+              </Text>
+
+              <Group left={0} top={-glyphSizes.min}>
+                <Circle
+                  key={`small-legendGlyph`}
+                  className="legend-dot"
+                  cx={0}
+                  cy={0}
+                  r={glyphSizes.min}
+                  fill={"rgba(0,0,0,0)"}
+                  stroke={theme.colors.accent}
+                />
+                <Text
+                  x={70}
+                  y={0}
+                  fill={theme.colors.accent}
+                  width={80}
+                  fontSize={10}
+                  verticalAnchor={"middle"}
+                  textAnchor="middle"
+                >
+                  {"< 10 Items"}
+                </Text>
+                <Line
+                  from={{ x: 40, y: 0 }}
+                  to={{ x: glyphSizes.min, y: 0 }}
+                  stroke={theme.colors.accent}
+                />
+              </Group>
+
+              <Group left={0} top={-glyphSizes.max}>
+                <Circle
+                  key={`large-legendGlyph`}
+                  className="legend-dot"
+                  cx={0}
+                  cy={0}
+                  r={glyphSizes.max}
+                  fill={"rgba(0,0,0,0)"}
+                  stroke={theme.colors.accent}
+                />
+
+                <Text
+                  x={70}
+                  y={0}
+                  fill={theme.colors.accent}
+                  width={80}
+                  fontSize={10}
+                  verticalAnchor={"middle"}
+                  textAnchor="middle"
+                >
+                  {"> 40 Items"}
+                </Text>
+                <Line
+                  from={{ x: 40, y: 0 }}
+                  to={{ x: glyphSizes.max, y: 0 }}
+                  stroke={theme.colors.accent}
+                />
+              </Group>
+            </Group>
+
             {points.map((point, i) => (
               <Circle
                 key={`point-${point[0]}-${i}`}
@@ -251,25 +348,71 @@ export default withTooltip<DotsProps, PointsRange>(
               alignItems: "center"
             }}
           >
-            <div>
-              <span>{format.mileage(tooltipData.Mileage)}</span>
-              {"   |   "}
-              <span>{format.currency(tooltipData.Price)}</span>
-              {"   |   "}
-              <span>{format.date(date(tooltipData.Registration))}</span>
+            <div style={{ fontWeight: "bold", fontSize: 16, marginBottom: 16 }}>
+              {tooltipData.Make}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                width: "100%",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center"
+              }}
+            >
+              <div style={{ flexGrow: 1, textAlign: "center" }}>
+                {format.currency(tooltipData.Price)}
+              </div>
+              <div style={{ flexGrow: 1, textAlign: "center" }}>
+                {format.mileage(tooltipData.Mileage)}
+              </div>
+              <div style={{ flexGrow: 1, textAlign: "center" }}>
+                {format.date(date(tooltipData.Registration.toString()))}
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 8,
+                marginTop: 12,
+                color: theme.colors.accent
+              }}
+            >
+              {"Click to see the Listing."}
             </div>
           </Tooltip>
         )}
         {showControls && (
           <div>
-            <label style={{ fontSize: 12 }}>
-              <input
-                type="checkbox"
-                checked={showMileage}
-                onChange={() => setShowMileage(!showMileage)}
-              />
-              &nbsp;Show mileage
-            </label>
+            <div>
+              <label style={{ fontSize: 12, marginRight: 30 }}>
+                <input
+                  type="checkbox"
+                  checked={showMileage}
+                  onChange={() => setShowMileage(!showMileage)}
+                />
+                &nbsp;Show mileage
+              </label>
+            </div>
+            <div>
+              <div>Highlight Data</div>
+              <label style={{ fontSize: 12, marginRight: 30 }}>
+                <input
+                  type="checkbox"
+                  checked={highlight.TopPrice}
+                  onChange={() => setHighlightData(highlight)}
+                />
+                &nbsp;Top Price
+              </label>
+              <label style={{ fontSize: 12, marginRight: 30 }}>
+                <input
+                  type="checkbox"
+                  checked={highlight.TopPrice}
+                  onChange={() => setHighlightData(highlight)}
+                />
+                &nbsp;Top Price
+              </label>
+            </div>
           </div>
         )}
       </div>

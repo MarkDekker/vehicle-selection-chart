@@ -1,7 +1,14 @@
 export default {
   colors: {
-    scheme: ["#fcee21", "#999999", "#d6e0f0"],
-    "Price Label": {
+    accent: "#f5f200",
+    interactive: "rgb(17, 102, 168)",
+    scheme: ["#f5f200", "#999999", "#d6e0f0"],
+    chart: {
+      highlight: "#ffffff",
+      base: "#999999",
+      interactive: "#f5f200"
+    },
+    PriceLabel: {
       "Gutes Angebot": "#3da600"
       // Teuer: "#f56200"
     }

@@ -11,6 +11,7 @@
     "@visx/event": "latest",
     "@visx/gradient": "latest",
     "@visx/group": "latest",
+    "@visx/marker": "1.8.0",
     "@visx/mock-data": "latest",
     "@visx/pattern": "1.7.0",
     "@visx/responsive": "latest",

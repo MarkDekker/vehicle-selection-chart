@@ -7,7 +7,7 @@ import "./sandbox-styles.css";
 
 render(
   <ParentSize>
-    {({ width, height }) => <Example width={width} height={height} />}
+    {({ width, height }) => <Example width={width} height={500} />}
   </ParentSize>,
   document.getElementById("root")
 );
