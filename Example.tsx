@@ -17,6 +17,7 @@ import theme from "./theme";
 
 import mappingMake from "./mappingMake";
 import mappingModel from "./mappingModel";
+import availableImages from "./availableImages";
 
 // --- Constants
 const GOOD_OFFER = "Gutes Angebot";
@@ -79,10 +80,19 @@ const getLabel = (id: string | number, idType: string) => {
   return mappingTable.hasOwnProperty(idStr) ? mappingTable[idStr] : "";
 };
 
+const getLogo = (id: string | number) => {
+  const idStr = id.toString();
+  if (availableImages.hasOwnProperty(idStr)) {
+    const fileFormat = availableImages[idStr];
+    return `./logos/brand_${idStr}.${fileFormat}`;
+  }
+  return `./logos/placeholder.png`;
+};
+
 // --- Chart Design -----------------
 
 const glyphSizes = { min: 3, max: 15 };
-const defaultMargin = { top: 30, right: 30, bottom: 50, left: 110 };
+const defaultMargin = { top: 30, right: 50, bottom: 50, left: 110 };
 
 // --- Constant Chart Values --------
 
@@ -425,9 +435,9 @@ export default withTooltip<ChartProps, ListingSummary>(
                 }}
               >
                 <img
-                  src={`./logos/brand_${tooltipData.makeID}.webp`}
-                  alt={`./logos/brand_${tooltipData.makeID}.webp`}
-                  style={{ height: 60 }}
+                  src={getLogo(tooltipData.makeID)}
+                  alt={`${getLabel(tooltipData.makeID, "make")} Logo`}
+                  style={{ height: 60, marginRight: 8 }}
                 />
                 <div className="tooltip-vehicle-data-text">
                   <div
