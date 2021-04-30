@@ -72,7 +72,7 @@ const comparison = (operation?: string) => {
       return (
         value: string | number | undefined,
         targetValue: string | number
-      ) => value === targetValue;
+      ) => (value ? value.toString() === targetValue.toString() : false);
   }
 };
 
@@ -218,9 +218,9 @@ export default withTooltip<ChartProps, ListingSummary>(
       (d: ListingSummary) => {
         if (relevantFilters.hasOwnProperty(highlightState.key)) {
           const filterDefinition = relevantFilters[highlightState.key];
-          if (highlightState.key === BODY_TYPE_KEY) {
-            console.log(highlightState.value);
-          }
+          // if (highlightState.key === BODY_TYPE_KEY) {
+          //   console.log(`${highlightState.value} - ${d[highlightState.key]}`);
+          // }
           return comparison(filterDefinition.comparator)(
             d[highlightState.key],
             highlightState.value
