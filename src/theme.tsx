@@ -9,8 +9,9 @@ export default {
     chart: {
       highlight: "rgba(250, 250, 250, 0.7)",
       base: "rgba(200, 200, 200, 0.4)",
-      interactive: "#f5f200",
-      faded: "rgba(200, 200, 200, 0.2)"
+      interactive: "rgba(250, 250, 250, 0.95)",
+      faded: "rgba(200, 200, 200, 0.1)",
+      active: "#f5f200",
     },
     PriceLabel: {
       "Gutes Angebot": "#3da600"

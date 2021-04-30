@@ -10,7 +10,7 @@ import {
   CUSTOMER_TYPE_KEY
 } from "./constants";
 import { getLabel } from "./mappings/labelMapper";
-import { ListingSummary } from "./mockData/powerSearch";
+import { ListingSummary } from "./quickTypes";
 
 function getUnique(value, index, self) {
   return value ? self.indexOf(value) === index : false;

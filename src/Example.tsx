@@ -13,20 +13,15 @@ import { localPoint } from "@visx/event";
 import format from "./formattingFunctions";
 import { getRelevantFilters } from "./checkData";
 
-import {
-  ListingSummary,
-  listings,
-  listingDescriptors
-} from "./mockData/powerSearch";
+// import { listingDescriptors } from "./mockData/powerSearch";
+import { ListingSummary } from "./quickTypes";
 import theme from "./theme";
 
-import { getLabel } from "./mappings/labelMapper";
+import { getLabel, listingDescriptors } from "./mappings/labelMapper";
 import { peIcons } from "./mappings/mappingPriceEvaluation";
 import availableImages from "./mappings/availableImages";
 
 import {
-  GOOD_OFFER,
-  SELECTED_MAKE,
   MILEAGE_KEY,
   PRICE_KEY,
   POWER_KEY,
@@ -42,6 +37,7 @@ import {
 export type ChartProps = {
   width: number;
   height: number;
+  listings: ListingSummary[];
   showControls?: true;
   margin?: { top: number; right: number; bottom: number; left: number };
 };
@@ -96,31 +92,11 @@ const defaultMargin = { top: 30, right: 50, bottom: 50, left: 110 };
 
 // --- Constant Chart Values --------
 
-const yRange = {
-  min: Math.min(...listings.map((d) => d.price)),
-  max: Math.max(...listings.map((d) => d.price))
-};
-
-const xRange = {
-  mileage: {
-    min: Math.min(...listings.map((d) => d.mileage)),
-    max: Math.max(...listings.map((d) => d.mileage))
-  },
-  registrationDate: {
-    min: Math.min(...listings.map((d) => processAS24Date(d.registrationDate))),
-    max: Math.max(...listings.map((d) => processAS24Date(d.registrationDate)))
-  }
-};
-
-let relevantFilters = {};
-for (const filter of getRelevantFilters(listings).slice(0, 5)) {
-  relevantFilters[filter.key] = filter;
-}
-
 export default withTooltip<ChartProps, ListingSummary>(
   ({
     width,
     height,
+    listings,
     showControls = true,
     margin = defaultMargin,
     hideTooltip,
@@ -130,11 +106,46 @@ export default withTooltip<ChartProps, ListingSummary>(
   }: ChartProps & WithTooltipProvidedProps<ListingSummary>) => {
     if (width < 10) return null;
 
+    const [showMileage, setShowMileage] = useState(true);
+    const [selectedGUID, setselectedGUID] = useState("");
     const [highlightState, sethighlightState] = useState({
       key: "no-highlight",
       value: undefined
     });
-    const [showMileage, setShowMileage] = useState(true);
+
+    const yRange = useMemo(() => {
+      return {
+        min: Math.min(...listings.map((d) => d.price)),
+        max: Math.max(...listings.map((d) => d.price))
+      };
+    }, [listings]);
+
+    const xRange = useMemo(() => {
+      return {
+        mileage: {
+          min: Math.min(...listings.map((d) => d.mileage)),
+          max: Math.max(...listings.map((d) => d.mileage))
+        },
+        registrationDate: {
+          min: Math.min(
+            ...listings.map((d) => processAS24Date(d.registrationDate))
+          ),
+          max: Math.max(
+            ...listings.map((d) => processAS24Date(d.registrationDate))
+          )
+        }
+      };
+    }, [listings]);
+
+    const relevantFilters = useMemo(
+      () =>
+        Object.fromEntries(
+          getRelevantFilters(listings)
+            .slice(0, 5)
+            .map((x) => [x.key, x])
+        ),
+      [listings]
+    );
 
     let xCategory = showMileage ? MILEAGE_KEY : REGISTRATION_KEY;
     let yCategory = PRICE_KEY;
@@ -170,7 +181,7 @@ export default withTooltip<ChartProps, ListingSummary>(
               range: [0, xMax],
               clamp: true
             }),
-      [xCategory, xMax]
+      [xCategory, xMax, xRange]
     );
     const yScale = useMemo(
       () =>
@@ -179,7 +190,7 @@ export default withTooltip<ChartProps, ListingSummary>(
           range: [yMax, 0],
           clamp: true
         }),
-      [yMax]
+      [yMax, yRange]
     );
 
     const glyphScale = useMemo(
@@ -200,13 +211,16 @@ export default withTooltip<ChartProps, ListingSummary>(
           range: [glyphSizes.min, glyphSizes.max],
           clamp: true
         }),
-      [glyphCategory]
+      [glyphCategory, listings]
     );
 
     const highLight = useCallback(
       (d: ListingSummary) => {
         if (relevantFilters.hasOwnProperty(highlightState.key)) {
           const filterDefinition = relevantFilters[highlightState.key];
+          if (highlightState.key === BODY_TYPE_KEY) {
+            console.log(highlightState.value);
+          }
           return comparison(filterDefinition.comparator)(
             d[highlightState.key],
             highlightState.value
@@ -214,11 +228,13 @@ export default withTooltip<ChartProps, ListingSummary>(
         }
         return false;
       },
-      [highlightState]
+      [highlightState, relevantFilters]
     );
 
     const setGlyphColor = (d: ListingSummary) => {
       if (tooltipData === d) return theme.colors.chart.interactive;
+      if (d.classifiedGUID === selectedGUID) return theme.colors.chart.active;
+
       if (highLight(d)) {
         return theme.colors.chart.highlight;
       }
@@ -272,6 +288,15 @@ export default withTooltip<ChartProps, ListingSummary>(
       }, 300);
     }, [hideTooltip]);
 
+    const handleClick = useCallback(
+      (event: React.MouseEvent | React.TouchEvent) => {
+        if (tooltipData && tooltipData.classifiedGUID) {
+          setselectedGUID(tooltipData.classifiedGUID);
+        }
+      },
+      [tooltipData]
+    );
+
     return (
       <>
         <div>
@@ -298,6 +323,7 @@ export default withTooltip<ChartProps, ListingSummary>(
               onMouseLeave={handleMouseLeave}
               onTouchMove={handleMouseMove}
               onTouchEnd={handleMouseLeave}
+              onClick={handleClick}
             />
             <Group pointerEvents="none" left={margin.left} top={margin.top}>
               <AxisLeft
